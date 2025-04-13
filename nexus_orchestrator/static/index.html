@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Team Orchestrator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-4">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-2xl font-bold mb-4">AI Team Orchestrator</h1>
+        
+        <div class="bg-white p-4 rounded shadow mb-4">
+            <textarea id="prompt" class="w-full p-2 border rounded" 
+                      rows="4" placeholder="Enter your request here..."></textarea>
+            
+            <div class="flex flex-wrap gap-2 my-3">
+                <label class="flex items-center">
+                    <input type="checkbox" class="role-checkbox mr-2" value="developer" checked> 
+                    Developer
+                </label>
+                <label class="flex items-center">
+                    <input type="checkbox" class="role-checkbox mr-2" value="ui_designer" checked> 
+                    UI Designer
+                </label>
+                <label class="flex items-center">
+                    <input type="checkbox" class="role-checkbox mr-2" value="project_manager" checked> 
+                    Project Manager
+                </label>
+            </div>
+            
+            <button id="submit" class="bg-blue-500 text-white px-4 py-2 rounded">
+                Generate Team Response
+            </button>
+        </div>
+        
+        <div id="loading" class="hidden text-center py-4">
+            <p>Team is collaborating on your request...</p>
+        </div>
+        
+        <div id="result" class="bg-white p-4 rounded shadow hidden"></div>
+    </div>
+
+    <script>
+        document.getElementById('submit').addEventListener('click', async () => {
+            const prompt = document.getElementById('prompt').value;
+            if (!prompt) return;
+            
+            const roles = Array.from(document.querySelectorAll('.role-checkbox:checked'))
+                .map(cb => cb.value);
+            
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('result').classList.add('hidden');
+            
+            try {
+                const response = await fetch('/orchestrate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt, roles })
+                });
+                
+                const data = await response.json();
+                
+                // Convert markdown to HTML (very basic)
+                let html = data.result
+                    .replace(/## (.*)/g, '<h2 class="text-xl font-bold mt-4 mb-2">$1</h2>')
+                    .replace(/# (.*)/g, '<h1 class="text-2xl font-bold mb-3">$1</h1>')
+                    .split('\n').join('<br>');
+                
+                document.getElementById('result').innerHTML = html;
+                document.getElementById('result').classList.remove('hidden');
+            } catch (error) {
+                console.error(error);
+                document.getElementById('result').innerHTML = 
+                    `<p class="text-red-500">Error: ${error.message}</p>`;
+                document.getElementById('result').classList.remove('hidden');
+            } finally {
+                document.getElementById('loading').classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>

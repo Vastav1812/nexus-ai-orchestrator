@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus AI Orchestrator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold text-center">Nexus AI Orchestrator</h1>
+            <p class="text-center text-gray-600">Multi-Agent AI Orchestration with Cross-Thought & Blockchain</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Input Panel -->
+            <div class="lg:col-span-1 bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-semibold mb-4">Configure Task</h2>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Prompt</label>
+                    <textarea id="prompt" rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Workflow Type</label>
+                    <select id="workflow-type" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="parallel">Parallel (All agents work simultaneously)</option>
+                        <option value="sequential">Sequential (Agents build on each other's work)</option>
+                        <option value="consensus">Consensus (Agents collaborate to reach agreement)</option>
+                    </select>
+                </div>
+                
+                <div class="mb-4" id="iterations-container">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Max Iterations</label>
+                    <input type="number" id="max-iterations" min="1" max="10" value="3" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div class="mb-4" id="threshold-container" style="display: none;">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Consensus Threshold (0.0-1.0)</label>
+                    <input type="number" id="consensus-threshold" min="0" max="1" step="0.1" value="0.7" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">AI Agents</label>
+                    <div id="agents-container" class="space-y-4">
+                        <!-- Agent roles will be added here -->
+                    </div>
+                    <button id="add-agent" class="mt-2 px-3 py-1 bg-gray-200 text-gray-700 text-sm rounded hover:bg-gray-300">+ Add Agent</button>
+                </div>
+                
+                <button id="run-task" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                    Run Orchestration
+                </button>
+            </div>
+            
+            <!-- Results Panel -->
+            <div class="lg:col-span-2">
+                <div id="loading" class="hidden bg-white rounded-lg shadow-md p-6 mb-6">
+                    <div class="flex items-center justify-center">
+                        <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span>AI agents are collaborating on your request...</span>
+                    </div>
+                </div>
+                
+                <div id="results-container" class="hidden bg-white rounded-lg shadow-md p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold">Results</h2>
+                        <div class="flex space-x-2">
+                            <button id="view-thoughts" class="px-3 py-1 bg-gray-200 text-gray-700 text-sm rounded hover:bg-gray-300">View Thoughts</button>
+                            <button id="view-blockchain" class="px-3 py-1 bg-gray-200 text-gray-700 text-sm rounded hover:bg-gray-300">View Blockchain</button>
+                        </div>
+                    </div>
+                    
+                    <div id="results-content" class="prose max-w-none"></div>
+                </div>
+                
+                <div id="thought-chain" class="hidden bg-white rounded-lg shadow-md p-6 mt-6">
+                    <h2 class="text-xl font-semibold mb-4">Cross-Agent Thought Chain</h2>
+                    <div id="thought-chain-content" class="space-y-4"></div>
+                </div>
+                
+                <div id="blockchain-data" class="hidden bg-white rounded-lg shadow-md p-6 mt-6">
+                    <h2 class="text-xl font-semibold mb-4">Blockchain Verification</h2>
+                    <div id="blockchain-content" class="font-mono text-sm"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Agent Template (Hidden) -->
+    <template id="agent-template">
+        <div class="agent-item p-3 border border-gray-300 rounded-md">
+            <div class="flex justify-between mb-2">
+                <h3 class="font-medium">Agent #</h3>
+                <button class="remove-agent text-red-500 text-sm hover:text-red-700">Remove</button>
+            </div>
+            <div class="space-y-2">
+                <div>
+                    <label class="block text-xs text-gray-500">Role Name</label>
+                    <input type="text" class="agent-role w-full px-2 py-1 border border-gray-300 rounded-md text-sm" placeholder="e.g., developer">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500">Provider</label>
+                    <select class="agent-provider w-full px-2 py-1 border border-gray-300 rounded-md text-sm">
+                        <option value="openai">OpenAI</option>
+                        <option value="anthropic">Anthropic Claude</option>
+                        <option value="google">Google Gemini</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500">Instructions</label>
+                    <textarea class="agent-instructions w-full px-2 py-1 border border-gray-300 rounded-md text-sm" rows="2"></textarea>
+                </div>
+            </div>
+        </div>
+    </template>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initial setup
+            addAgent('developer', 'openai', 'You are a software developer. Your role is to analyze technical requirements and provide code solutions.');
+            addAgent('ui_designer', 'anthropic', 'You are a UI/UX designer. Your role is to create design suggestions and improve user experience.');
+            addAgent('project_manager', 'google', 'You are a project manager. Your role is to create plans, timeline estimates, and coordinate resources.');
+            
+            // Event listeners
+            document.getElementById('add-agent').addEventListener('click', () => {
+                addAgent();
+            });
+            
+            document.getElementById('workflow-type').addEventListener('change', function() {
+                const consensusContainer = document.getElementById('threshold-container');
+                if (this.value === 'consensus') {
+                    consensusContainer.style.display = 'block';
+                } else {
+                    consensusContainer.style.display = 'none';
+                }
+            });
+            
+            document.getElementById('run-task').addEventListener('click', runOrchestration);
+            document.getElementById('view-thoughts').addEventListener('click', toggleThoughtChain);
+            document.getElementById('view-blockchain').addEventListener('click', toggleBlockchainData);
+            
+            // Add agent
+            function addAgent(role = '', provider = 'openai', instructions = '') {
+                const container = document.getElementById('agents-container');
+                const template = document.getElementById('agent-template');
+                const clone = template.content.cloneNode(true);
+                
+                const agentCount = container.children.length + 1;
+                clone.querySelector('h3').textContent = `Agent ${agentCount}`;
+                
+                // Set values if provided
+                if (role) clone.querySelector('.agent-role').value = role;
+                if (provider) clone.querySelector('.agent-provider').value = provider;
+                if (instructions) clone.querySelector('.agent-instructions').value = instructions;
+                
+                // Add remove event
+                clone.querySelector('.remove-agent').addEventListener('click', function() {
+                    this.closest('.agent-item').remove();
+                    // Renumber remaining agents
+                    renumberAgents();
+                });
+                
+                container.appendChild(clone);
+            }
+            
+            // Renumber agents
+            function renumberAgents() {
+                const agents = document.querySelectorAll('.agent-item h3');
+                agents.forEach((agent, index) => {
+                    agent.textContent = `Agent ${index + 1}`;
+                });
+            }
+            
+            // Run orchestration
+            async function runOrchestration() {
+                const prompt = document.getElementById('prompt').value;
+                if (!prompt.trim()) {
+                    alert('Please enter a prompt');
+                    return;
+                }
+                
+                // Get agent configurations
+                const agents = [];
+                document.querySelectorAll('.agent-item').forEach(item => {
+                    const role = item.querySelector('.agent-role').value;
+                    const provider = item.querySelector('.agent-provider').value;
+                    const instructions = item.querySelector('.agent-instructions').value;
+                    
+                    if (role.trim()) {
+                        agents.push({
+                            role_name: role,
+                            agent_id: agents.length + 1, // Use sequential IDs
+                            provider: provider,
+                            instructions: instructions,
+                            prompt_template: `You are a ${role}. ${instructions}\n\nTask: {prompt}`
+                        });
+                    }
+                });
+                
+                if (agents.length === 0) {
+                    alert('Please add at least one agent');
+                    return;
+                }
+                
+                // Show loading
+                document.getElementById('loading').classList.remove('hidden');
+                document.getElementById('results-container').classList.add('hidden');
+                document.getElementById('thought-chain').classList.add('hidden');
+                document.getElementById('blockchain-data').classList.add('hidden');
+                
+                try {
+                    // Prepare request data
+                    const requestData = {
+                        prompt: prompt,
+                        roles: agents,
+                        workflow_type: document.getElementById('workflow-type').value,
+                        max_iterations: parseInt(document.getElementById('max-iterations').value),
+                        consensus_threshold: parseFloat(document.getElementById('consensus-threshold').value)
+                    };
+                    
+                    // Call API
+                    const response = await fetch('/api/v1/workflows/orchestrate', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(requestData)
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`API error: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    displayResults(data);
+                } catch (error) {
+                    console.error('Error:', error);
+                    document.getElementById('results-content').innerHTML = `
+                        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                            <p class="font-bold">Error</p>
+                            <p>${error.message}</p>
+                        </div>
+                    `;
+                    document.getElementById('results-container').classList.remove('hidden');
+                } finally {
+                    document.getElementById('loading').classList.add('hidden');
+                }
+            }
+            
+            // Display results
+            function displayResults(data) {
+                const resultsContent = document.getElementById('results-content');
+                
+                // Store blockchain and thought chain data for later
+                window.orchestrationData = data;
+                
+                // Display the main output
+                let html = '';
+                
+                if (data.combined_output) {
+                    // Parallel workflow output
+                    html = formatMarkdown(data.combined_output);
+                } else if (data.final_output) {
+                    // Sequential or consensus workflow output
+                    html = formatMarkdown(data.final_output);
+                    
+                    if (data.consensus_reached === false) {
+                        html = `
+                            <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4">
+                                <p class="font-bold">No consensus reached after ${data.iterations.length} iterations</p>
+                            </div>
+                        ` + html;
+                    }
+                } else {
+                    // Fallback for unknown format
+                    html = `<pre class="bg-gray-100 p-4 rounded overflow-auto">${JSON.stringify(data, null, 2)}</pre>`;
+                }
+                
+                resultsContent.innerHTML = html;
+                document.getElementById('results-container').classList.remove('hidden');
+            }
+            
+            // Toggle thought chain display
+            function toggleThoughtChain() {
+                const thoughtChain = document.getElementById('thought-chain');
+                const thoughtChainContent = document.getElementById('thought-chain-content');
+                
+                if (thoughtChain.classList.contains('hidden')) {
+                    thoughtChain.classList.remove('hidden');
+                    
+                    // Display thought chain if we have data
+                    if (window.orchestrationData && window.orchestrationData.blockchain && window.orchestrationData.blockchain.thought_chain_id) {
+                        const thoughtChainId = window.orchestrationData.blockchain.thought_chain_id;
+                        
+                        // You would fetch the actual thought chain from the API here
+                        // For now, we'll create a simulated display
+                        let html = `<p class="text-gray-500 mb-4">Thought Chain ID: ${thoughtChainId}</p>`;
+                        
+                        // Create sample thoughts based on agent results
+                        if (window.orchestrationData.agent_results) {
+                            Object.entries(window.orchestrationData.agent_results).forEach(([role, content]) => {
+                                html += `
+                                    <div class="p-3 border border-gray-300 rounded-md">
+                                        <div class="flex justify-between items-center mb-2">
+                                            <h3 class="font-medium">${role.charAt(0).toUpperCase() + role.slice(1)}</h3>
+                                            <span class="text-xs text-gray-500">Agent ID: ${window.orchestrationData.roles?.findIndex(r => r.role_name === role) + 1 || '?'}</span>
+                                        </div>
+                                        <p class="text-sm">${content.substring(0, 200)}${content.length > 200 ? '...' : ''}</p>
+                                    </div>
+                                `;
+                            });
+                        }
+                        
+                        thoughtChainContent.innerHTML = html;
+                    } else {
+                        thoughtChainContent.innerHTML = '<p>No thought chain data available</p>';
+                    }
+                } else {
+                    thoughtChain.classList.add('hidden');
+                }
+            }
+            
+            // Toggle blockchain data display
+            function toggleBlockchainData() {
+                const blockchainData = document.getElementById('blockchain-data');
+                const blockchainContent = document.getElementById('blockchain-content');
+                
+                if (blockchainData.classList.contains('hidden')) {
+                    blockchainData.classList.remove('hidden');
+                    
+                    // Display blockchain data if we have it
+                    if (window.orchestrationData && window.orchestrationData.blockchain) {
+                        const blockchainInfo = window.orchestrationData.blockchain;
+                        
+                        blockchainContent.innerHTML = `
+                            <div class="bg-gray-100 p-4 rounded overflow-auto">
+                                <p>Contract ID: ${blockchainInfo.contract_id || 'N/A'}</p>
+                                <p>Thought Chain ID: ${blockchainInfo.thought_chain_id || 'N/A'}</p>
+                                <p>Verification: ${blockchainInfo.verification || 'N/A'}</p>
+                                <p class="text-xs mt-4">This is a simulated blockchain verification. In a production environment, this would show actual blockchain transaction details.</p>
+                            </div>
+                        `;
+                    } else {
+                        blockchainContent.innerHTML = '<p>No blockchain data available</p>';
+                    }
+                } else {
+                    blockchainData.classList.add('hidden');
+                }
+            }
+            
+            // Format markdown to HTML (basic version)
+            function formatMarkdown(markdown) {
+                return markdown
+                    .replace(/^# (.*$)/gm, '<h1 class="text-2xl font-bold my-4">$1</h1>')
+                    .replace(/^## (.*$)/gm, '<h2 class="text-xl font-bold my-3">$1</h2>')
+                    .replace(/^### (.*$)/gm, '<h3 class="text-lg font-bold my-2">$1</h3>')
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                    .replace(/```([^`]+)```/g, '<pre class="bg-gray-100 p-4 rounded overflow-auto my-4">$1</pre>')
+                    .replace(/`([^`]+)`/g, '<code class="bg-gray-100 px-1 rounded">$1</code>')
+                    .replace(/^- (.*$)/gm, '<li class="ml-6">$1</li>')
+                    .replace(/\n\n/g, '<br><br>');
+            }
+        });
+    </script>
+</body>
+</html>
