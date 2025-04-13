@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.class
+
+# Environment
+.env
+**/.env
+.venv
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+
+# Blockchain simulation
+blockchain_sim/
+
+# Local settings
+*.local.py
